@@ -59,6 +59,10 @@ with app.app_context():
         teacher_name = db.Column(db.String(100))
         teacher_phone = db.Column(db.String(100))
         course_name = db.Column(db.String(100))
+        video_url = db.Column(db.String(200))  # New column for video URL
+
+        def __repr__(self):
+            return f"<Video {self.name}>"
 
     db.create_all()
 class MyModelView(ModelView):
@@ -74,7 +78,9 @@ admin.add_view(MyModelView(Courses, db.session))
 admin.add_view(MyModelView(Videos, db.session))
 @app.route("/")
 def index():
-    return render_template("index.html")
+    courses=Courses.query.all()
+    teachers=Teacher.query.all()
+    return render_template("index.html",courses=courses,teachers=teachers)
 
 @app.route("/register", methods=["POST","GET"])
 def register():
@@ -166,9 +172,18 @@ def detail(id):
             if i.course_name==course_name and i.teacher_name==teacher_name:
                 videos.append(i)
 
-    return render_template("detail.html",videos=videos,courses=courses)
-    # else:
-    #     return ("false")
+    return render_template("detail.html",videos=videos,current_name=courses.course_name)
+
+@app.route('/video/<int:id>')
+def video_detail(id):
+    videos = Videos.query.filter_by(id=id)
+    for video in videos:
+        name=video.name
+        description=video.description
+        video_file=video.video_url
+
+    return render_template("video_detail.html", videos=video, name=name,description=description,video_file=video_file)
+
 
 @app.route("/contact")
 def contact():
