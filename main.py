@@ -29,19 +29,6 @@ with app.app_context():
         password = db.Column(db.String(100))
 
 
-    class Parent(UserMixin, db.Model):
-        id = db.Column(db.Integer, primary_key=True)
-        phone = db.Column(db.String(100), unique=True)
-        password = db.Column(db.String(100))
-        name = db.Column(db.String(1000))
-
-
-    class Student(UserMixin, db.Model):
-        id = db.Column(db.Integer, primary_key=True)
-        grade = db.Column(db.Integer)
-        parent = db.Column(db.String(100))
-        name = db.Column(db.String(1000))
-
     class Courses(UserMixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
         course_name = db.Column(db.String(1000))
@@ -49,7 +36,6 @@ with app.app_context():
         teacher_phone = db.Column(db.String(100))
         grade = db.Column(db.Integer)
         rate = db.Column(db.String(100))
-    db.create_all()
 
     class Videos(UserMixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
@@ -59,6 +45,10 @@ with app.app_context():
         teacher_name = db.Column(db.String(100))
         teacher_phone = db.Column(db.String(100))
         course_name = db.Column(db.String(100))
+        video_url = db.Column(db.String(200))  # New column for video URL
+
+        def __repr__(self):
+            return f"<Video {self.name}>"
 
     db.create_all()
 class MyModelView(ModelView):
@@ -68,13 +58,13 @@ class MyModelView(ModelView):
 admin = Admin(app)
 admin.add_view(MyModelView(User, db.session))
 admin.add_view(MyModelView(Teacher, db.session))
-admin.add_view(MyModelView(Parent, db.session))
-admin.add_view(MyModelView(Student, db.session))
 admin.add_view(MyModelView(Courses, db.session))
 admin.add_view(MyModelView(Videos, db.session))
 @app.route("/")
 def index():
-    return render_template("index.html")
+    courses=Courses.query.all()
+    teachers=Teacher.query.all()
+    return render_template("index.html",courses=courses,teachers=teachers)
 
 @app.route("/register", methods=["POST","GET"])
 def register():
@@ -82,41 +72,17 @@ def register():
         phone=request.form.get("phone")
         name=request.form.get("name")
         password=request.form.get("password")
-        new_parent=Parent(
-            phone=phone,
-            password=password,
-            name=name
-        )
-        db.session.add(new_parent)
-        db.session.commit()
-
         new_user=User(
+            name=name,
             phone=phone,
-            password=password,
-            name=name
+            password=password
         )
         db.session.add(new_user)
         db.session.commit()
-        return redirect("/names")
-    return render_template("register_parent.html")
-
-
-@app.route("/names", methods=["GET","POST"])
-def names():
-    if request.method == "POST":
-        parent_name=request.form.get("parent_name")
-        names = request.form.get("names")
-        grades = request.form.get("grades")
-        names_list = names.split('\n')
-        grades_list = grades.split("\n")
-        for i in range(len(names_list)):
-            new_student = Student(
-                name=names_list[i],
-                grade=grades_list[i],
-                parent=parent_name
-            )
         return redirect("/login")
-    return render_template("names.html")
+    return render_template("register.html")
+
+
 
 @app.route("/login", methods=["GET","POST"])
 def login():
@@ -124,21 +90,22 @@ def login():
         name = request.form.get("name")
         phone = request.form.get("phone")
         password = request.form.get("password")
+        role=request.form.get("role")
+        role_user="uesr"
+        role_teacher = "teacher"
         users = User.query.all()
-        students = Student.query.all()
         for user in users:
-            if phone == user.phone and password == user.password:
-                users_children=[]
-                for student in students:
-                    if student.parent == user.name:
-                        users_children.append(student.name)
-                return render_template("page.html", user_phone=user.phone, users_children=users_children)
-
-        return redirect("/register")
+            if phone == user.phone and password == user.password and role_user == user.role:
+                return redirect("/")
+                return 'user'
+                # return redirect("/profile")
+            if phone == user.phone and password == user.password and role_teacher == user.role:
+                return 'teacher'
+        return redirect("/")
     return render_template("login.html")
 
-@app.route("/page")
-def page():
+@app.route("/profile")
+def profile():
     all_videos=Videos.query.all()
     all_courses=Courses.query.all()
     courses=[]
@@ -146,7 +113,7 @@ def page():
         for v in all_videos:
             if i.course_name==v.course_name and i.teacher_phone==v.teacher_phone:
                 courses.append(v)
-    return render_template("page.html",all=courses,all_courses=all_courses)
+    return render_template("profile.html",all=courses,all_courses=all_courses)
 @app.route("/course")
 def course():
     all_courses=Courses.query.all()
@@ -166,9 +133,18 @@ def detail(id):
             if i.course_name==course_name and i.teacher_name==teacher_name:
                 videos.append(i)
 
-    return render_template("detail.html",videos=videos,courses=courses)
-    # else:
-    #     return ("false")
+    return render_template("detail.html",videos=videos,current_name=courses.course_name)
+
+@app.route('/video/<int:id>')
+def video_detail(id):
+    videos = Videos.query.filter_by(id=id)
+    for video in videos:
+        name=video.name
+        description=video.description
+        video_file=video.video_url
+
+    return render_template("video_detail.html", videos=video, name=name,description=description,video_file=video_file)
+
 
 @app.route("/contact")
 def contact():
@@ -191,9 +167,7 @@ def maketeacher():
     return render_template("maketeacher.html")
 
 
-@app.route("/profile")
-def profile():
-     return render_template("profile.html")
+
 
 
 
