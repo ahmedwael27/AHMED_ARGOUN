@@ -26,7 +26,11 @@ with app.app_context():
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(1000))
         phone = db.Column(db.String(100), unique=True)
-        password = db.Column(db.String(100))
+        status = db.Column(db.String(100))
+        videos = db.relationship('Videos', back_populates='teacher')
+
+        def __repr__(self):
+            return f"<Teacher {self.name}>"
 
 
     class Courses(UserMixin, db.Model):
@@ -46,9 +50,13 @@ with app.app_context():
         teacher_phone = db.Column(db.String(100))
         course_name = db.Column(db.String(100))
         video_url = db.Column(db.String(200))  # New column for video URL
+        teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'))
+        teacher = db.relationship('Teacher', back_populates='videos')
 
         def __repr__(self):
             return f"<Video {self.name}>"
+
+
 
     db.create_all()
 class MyModelView(ModelView):
@@ -90,18 +98,10 @@ def login():
         name = request.form.get("name")
         phone = request.form.get("phone")
         password = request.form.get("password")
-        role=request.form.get("role")
-        role_user="uesr"
-        role_teacher = "teacher"
         users = User.query.all()
         for user in users:
-            if phone == user.phone and password == user.password and role_user == user.role:
-                return redirect("/")
-                return 'user'
-                # return redirect("/profile")
-            if phone == user.phone and password == user.password and role_teacher == user.role:
-                return 'teacher'
-        return redirect("/")
+            if name == user.name and password == user.password :
+                return redirect("/profile")
     return render_template("login.html")
 
 @app.route("/profile")
@@ -150,21 +150,66 @@ def video_detail(id):
 def contact():
     return render_template("contact.html")
 
-@app.route("/maketeacher", methods=["GET","POST"])
+@app.route("/maketeacher", methods=["GET", "POST"])
 def maketeacher():
     if request.method == "POST":
         phone = request.form.get("phone")
-        all_users=User.query.filter_by(phone=phone)
-        for i in all_users:
-            if phone==i.phone:
-                new_teacher=Teacher(
-                name=i.name,
-                phone=i.phone
+        all_users = User.query.filter_by(phone=phone).all()
+
+        for user in all_users:
+            if phone == user.phone:
+                new_teacher = Teacher(
+                    name=user.name,
+                    phone=user.phone,
+                    status='pending'  # 'pending' status indicates awaiting admin approval
                 )
                 db.session.add(new_teacher)
                 db.session.commit()
-            return ('teacher')
+
+                return redirect("/admin_dashboard")
+
+        return 'User not found'
+
     return render_template("maketeacher.html")
+
+
+def get_pending_teacher_requests():
+    return Teacher.query.filter_by(status='pending').all()
+
+@app.route("/admin_dashboard")
+def admin_dashboard():
+    # Retrieve pending teacher requests
+    pending_requests = get_pending_teacher_requests()
+    return render_template("admin_dashboard.html", pending_requests=pending_requests)
+
+@app.route("/approve_teacher_request/<int:request_id>")
+def approve_teacher_request(request_id):
+    # Retrieve the specific teacher request
+    teacher_request = Teacher.query.get(request_id)
+
+    # Update the status to 'approved' and change the user to a teacher
+    if teacher_request:
+        teacher_request.status = 'approved'
+        db.session.commit()
+
+    return redirect("/admin_dashboard")
+
+
+
+@app.route("/view_teacher/<int:teacher_id>")
+def view_teacher(teacher_id):
+    teacher = Teacher.query.get_or_404(teacher_id)
+    return render_template("view_teacher.html", teacher=teacher)
+
+@app.route("/play_video_sample/<int:teacher_id>")
+def play_video_sample(teacher_id):
+    # Assuming you have a VideoSample model with appropriate fields
+    videos = Videos.query.filter_by(teacher_id=teacher_id).all()
+    if videos:
+        return render_template("play_video_sample.html", videos=videos)
+    else:
+        return "No videos found for this teacher."
+
 
 
 
