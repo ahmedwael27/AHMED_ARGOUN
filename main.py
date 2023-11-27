@@ -297,10 +297,6 @@ def course_detail(course_id):
     return render_template("video_detail.html", course_name=course_name, teacher_name=teacher_name,course_sample=course_sample)
 
 
-
-
-
-
 @app.route("/contact")
 def contact():
     return render_template("contact.html")
