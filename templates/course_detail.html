@@ -5,19 +5,16 @@
     <title>Title</title>
 </head>
 <body>
-<div class="card">
-    <div class="card-body">
-        <ul class="list-group">
-            {% for course in pending_courses %}
-                <li class="list-group-item d-flex justify-content-between align-items-center">
-                    <a href="{{ url_for('course_detail', course_id=course.id) }}">
-                        {{ course.course_name }} - {{ course.teacher_name }}
-                    </a>
-                    <a href="{{ url_for('approve_course_request', course_id=course.id) }}" class="btn btn-success">Approve</a>
-                </li>
-            {% endfor %}
-        </ul>
-    </div>
+<div class="container-fluid position-relative overlay-top bg-dark text-white-50 py-5" style="margin-top: 90px;">
+       <div class="container mt-5">
+    <h1 class="display-4" style="color: white;">{{ course_name }} Video</h1>
+    <p>{{ teacher_name }}</p>
+    <p>{{ course_sample }}</p>
+
+
+
+    <!-- Add more content or styling as needed -->
+
 </div>
 </body>
 </html>

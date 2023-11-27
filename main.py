@@ -33,6 +33,7 @@ with app.app_context():
         id = db.Column(db.Integer, primary_key=True)
         name = db.Column(db.String(1000))
         phone = db.Column(db.String(100), unique=True)
+        teacher_sample = db.Column(db.String(100))
         status = db.Column(db.String(100))
         videos = db.relationship('Videos', back_populates='teacher')
 
@@ -147,26 +148,7 @@ def teacher_profile():
     # Use the user information in your template
     return render_template("teacher_profile.html", user_id=user_id, user_name=user_name, user_phone=user_phone)
 
-@app.route("/createcourse", methods=["GET","POST"])
-def createcourse():
-    if request.method == "POST":
-        course_name = request.form.get("course_name")
-        teacher_name = request.form.get("teacher_name")
-        teacher_phone = request.form.get("teacher_phone")
-        course_price = request.form.get("course_price")
-        course_sample = request.form.get("course_sample")
-        new_course = Courses(
-            course_name=course_name,
-            teacher_name=teacher_name,
-            teacher_phone=teacher_phone,
-            course_price=course_price,
-            course_sample=course_sample,
-            status = 'pending'
-        )
-        db.session.add(new_course)
-        db.session.commit()
-        return redirect("teacherprofile")
-    return render_template("create_course.html")
+
 
 
 @app.route("/course")
@@ -174,8 +156,6 @@ def course():
     all_courses = Courses.query.filter_by(status='approved').all()
 
     return render_template("course.html", all_courses=all_courses)
-
-
 
 @app.route('/detail/<int:id>')
 def detail(id):
@@ -204,22 +184,31 @@ def video_detail(id):
     return render_template("video_detail.html", videos=video, name=name,description=description,video_file=video_file)
 
 
-@app.route("/contact")
-def contact():
-    return render_template("contact.html")
+
+
+@app.route("/admin_dashboard")
+def admin_dashboard():
+    # Retrieve pending teacher requests
+    pending_requests = Teacher.query.filter_by(status='pending').all()
+    pending_courses = Courses.query.filter_by(status='pending').all()
+
+    return render_template("admin_dashboard.html", pending_requests=pending_requests, pending_courses=pending_courses)
+
 
 @app.route("/maketeacher", methods=["GET", "POST"])
 def maketeacher():
     if request.method == "POST":
         phone = request.form.get("phone")
         all_users = User.query.filter_by(phone=phone).all()
-
+        teacher_sample= request.form.get("teacher_sample")
         for user in all_users:
             if phone == user.phone:
                 new_teacher = Teacher(
                     name=user.name,
                     phone=user.phone,
-                    status='pending'  # 'pending' status indicates awaiting admin approval
+                    teacher_sample= teacher_sample,
+                    status='pending' ,
+
                 )
                 db.session.add(new_teacher)
                 db.session.commit()
@@ -229,17 +218,6 @@ def maketeacher():
         return 'User not found'
 
     return render_template("maketeacher.html")
-
-
-# def get_pending_teacher_requests():
-#     return Teacher.query.filter_by(status='pending').all()
-
-@app.route("/admin_dashboard")
-def admin_dashboard():
-    # Retrieve pending teacher requests
-    pending_requests = Teacher.query.filter_by(status='pending').all()
-
-    return render_template("admin_dashboard.html", pending_requests=pending_requests)
 
 @app.route("/approve_teacher_request/<int:request_id>")
 def approve_teacher_request(request_id):
@@ -260,11 +238,39 @@ def approve_teacher_request(request_id):
 
     return redirect("/admin_dashboard")
 
+@app.route("/view_teacher_sample/<int:request_id>")
+def view_teacher_sample(request_id):
+    teacher = Teacher.query.filter_by(id=request_id).first()
 
-@app.route("/course_requests")
-def course_requests():
-    pending_courses = Courses.query.filter_by(status='pending').all()
-    return render_template("admin_dashboard.html", pending_courses=pending_courses)
+    if teacher:
+        name = teacher.name
+        phone = teacher.phone
+        video_file = teacher.teacher_sample
+        return render_template("view_teacher_sample.html", name=name, phone=phone, video_file=video_file)
+    else:
+        return "No teacher found with this ID."
+
+
+@app.route("/createcourse", methods=["GET","POST"])
+def createcourse():
+    if request.method == "POST":
+        course_name = request.form.get("course_name")
+        teacher_name = request.form.get("teacher_name")
+        teacher_phone = request.form.get("teacher_phone")
+        course_price = request.form.get("course_price")
+        course_sample = request.form.get("course_sample")
+        new_course = Courses(
+            course_name=course_name,
+            teacher_name=teacher_name,
+            teacher_phone=teacher_phone,
+            course_price=course_price,
+            course_sample=course_sample,
+            status = 'pending'
+        )
+        db.session.add(new_course)
+        db.session.commit()
+        return redirect("teacherprofile")
+    return render_template("create_course.html")
 
 
 @app.route("/approve_course_request/<int:course_id>")
@@ -282,26 +288,23 @@ def approve_course_request(course_id):
 
 @app.route("/course_detail/<int:course_id>")
 def course_detail(course_id):
-    # Fetch course details based on course_id from the database
-    course = Courses.query.get(course_id)
+    courses = Courses.query.filter_by(id=course_id)
+    for course in courses:
+        course_name=course.course_name
+        teacher_name=course.teacher_name
+        course_sample=course.course_sample
 
-    # Pass course details to the template
-    return render_template("course_detail.html", course=course)
+    return render_template("video_detail.html", course_name=course_name, teacher_name=teacher_name,course_sample=course_sample)
 
 
-@app.route("/view_teacher/<int:teacher_id>")
-def view_teacher(teacher_id):
-    teacher = Teacher.query.get_or_404(teacher_id)
-    return render_template("view_teacher.html", teacher=teacher)
 
-@app.route("/play_video_sample/<int:teacher_id>")
-def play_video_sample(teacher_id):
-    # Assuming you have a VideoSample model with appropriate fields
-    videos = Videos.query.filter_by(teacher_id=teacher_id).all()
-    if videos:
-        return render_template("play_video_sample.html", videos=videos)
-    else:
-        return "No videos found for this teacher."
+
+
+
+@app.route("/contact")
+def contact():
+    return render_template("contact.html")
+
 
 
 if __name__=="__main__":
