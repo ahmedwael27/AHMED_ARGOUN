@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect
+from flask import Flask, render_template, request, redirect, session
 import requests
 import datetime
 from flask_sqlalchemy import SQLAlchemy
@@ -14,13 +14,20 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 with app.app_context():
+    user_course_association = db.Table(
+        'user_course_association',
+        db.Column('user_id', db.Integer, db.ForeignKey('user.id')),
+        db.Column('course_id', db.Integer, db.ForeignKey('courses.id'))
+    )
+
+
     class User(UserMixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
         phone = db.Column(db.String(100))
         password = db.Column(db.String(100))
         name = db.Column(db.String(1000))
         role = db.Column(db.String(1000), default="user")
-
+        courses = db.relationship('Courses', secondary=user_course_association, back_populates='users')
 
     class Teacher(UserMixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
@@ -33,13 +40,16 @@ with app.app_context():
             return f"<Teacher {self.name}>"
 
 
-    class Courses(UserMixin, db.Model):
+    class Courses(db.Model):
         id = db.Column(db.Integer, primary_key=True)
         course_name = db.Column(db.String(1000))
         teacher_name = db.Column(db.String(100))
         teacher_phone = db.Column(db.String(100))
-        grade = db.Column(db.Integer)
+        course_price = db.Column(db.Integer)
         rate = db.Column(db.String(100))
+        course_sample = db.Column(db.String(100))
+        status = db.Column(db.String(100))
+        users = db.relationship('User', secondary=user_course_association, back_populates='courses')
 
     class Videos(UserMixin, db.Model):
         id = db.Column(db.Integer, primary_key=True)
@@ -95,29 +105,77 @@ def register():
 @app.route("/login", methods=["GET","POST"])
 def login():
     if request.method == "POST":
-        name = request.form.get("name")
-        phone = request.form.get("phone")
-        password = request.form.get("password")
+        name = request.form.get("your_name")
+        password = request.form.get("your_pass")
+        role_user="user"
+        role_teacher = "teacher"
         users = User.query.all()
         for user in users:
-            if name == user.name and password == user.password :
+            if name == user.name and password == user.password and role_user==user.role:
+                # Assuming 'id', 'name', and 'phone' are attributes of your User model
+                session['user_id'] = user.id
+                session['user_name'] = user.name
+                session['user_phone'] = user.phone
                 return redirect("/profile")
+
+            if name == user.name and password == user.password and role_teacher==user.role:
+                # Assuming 'id', 'name', and 'phone' are attributes of your User model
+                session['user_id'] = user.id
+                session['user_name'] = user.name
+                session['user_phone'] = user.phone
+                return redirect("/teacherprofile")
     return render_template("login.html")
+
 
 @app.route("/profile")
 def profile():
-    all_videos=Videos.query.all()
-    all_courses=Courses.query.all()
-    courses=[]
-    for i in all_courses:
-        for v in all_videos:
-            if i.course_name==v.course_name and i.teacher_phone==v.teacher_phone:
-                courses.append(v)
-    return render_template("profile.html",all=courses,all_courses=all_courses)
+    # Retrieve user information from the session
+    user_id = session.get('user_id')
+    user_name = session.get('user_name')
+    user_phone = session.get('user_phone')
+
+    # Use the user information in your template
+    return render_template("profile.html", user_id=user_id, user_name=user_name, user_phone=user_phone)
+
+@app.route("/teacherprofile")
+def teacher_profile():
+    # Retrieve user information from the session
+    user_id = session.get('user_id')
+    user_name = session.get('user_name')
+    user_phone = session.get('user_phone')
+
+    # Use the user information in your template
+    return render_template("teacher_profile.html", user_id=user_id, user_name=user_name, user_phone=user_phone)
+
+@app.route("/createcourse", methods=["GET","POST"])
+def createcourse():
+    if request.method == "POST":
+        course_name = request.form.get("course_name")
+        teacher_name = request.form.get("teacher_name")
+        teacher_phone = request.form.get("teacher_phone")
+        course_price = request.form.get("course_price")
+        course_sample = request.form.get("course_sample")
+        new_course = Courses(
+            course_name=course_name,
+            teacher_name=teacher_name,
+            teacher_phone=teacher_phone,
+            course_price=course_price,
+            course_sample=course_sample,
+            status = 'pending'
+        )
+        db.session.add(new_course)
+        db.session.commit()
+        return redirect("teacherprofile")
+    return render_template("create_course.html")
+
+
 @app.route("/course")
 def course():
-    all_courses=Courses.query.all()
+    all_courses = Courses.query.filter_by(status='approved').all()
+
     return render_template("course.html", all_courses=all_courses)
+
+
 
 @app.route('/detail/<int:id>')
 def detail(id):
@@ -128,7 +186,7 @@ def detail(id):
     if courses:
         course_name = courses.course_name
         teacher_name=courses.teacher_name
-        grade = courses.grade
+        price = courses.course_price
         for i in all_videos:
             if i.course_name==course_name and i.teacher_name==teacher_name:
                 videos.append(i)
@@ -173,13 +231,14 @@ def maketeacher():
     return render_template("maketeacher.html")
 
 
-def get_pending_teacher_requests():
-    return Teacher.query.filter_by(status='pending').all()
+# def get_pending_teacher_requests():
+#     return Teacher.query.filter_by(status='pending').all()
 
 @app.route("/admin_dashboard")
 def admin_dashboard():
     # Retrieve pending teacher requests
-    pending_requests = get_pending_teacher_requests()
+    pending_requests = Teacher.query.filter_by(status='pending').all()
+
     return render_template("admin_dashboard.html", pending_requests=pending_requests)
 
 @app.route("/approve_teacher_request/<int:request_id>")
@@ -187,13 +246,47 @@ def approve_teacher_request(request_id):
     # Retrieve the specific teacher request
     teacher_request = Teacher.query.get(request_id)
 
-    # Update the status to 'approved' and change the user to a teacher
-    if teacher_request:
+    # Check if the teacher request exists and is 'pending'
+    if teacher_request and teacher_request.status == 'pending':
+        # Update the status to 'approved'
         teacher_request.status = 'approved'
+        db.session.commit()
+
+        # Update the corresponding user's role to 'teacher'
+        user = User.query.filter_by(phone=teacher_request.phone).first()
+        if user:
+            user.role = 'teacher'
+            db.session.commit()
+
+    return redirect("/admin_dashboard")
+
+
+@app.route("/course_requests")
+def course_requests():
+    pending_courses = Courses.query.filter_by(status='pending').all()
+    return render_template("admin_dashboard.html", pending_courses=pending_courses)
+
+
+@app.route("/approve_course_request/<int:course_id>")
+def approve_course_request(course_id):
+    # Retrieve the specific course request
+    course_request = Courses.query.get(course_id)
+
+    # Update the status to 'approved'
+    if course_request:
+        course_request.status = 'approved'
         db.session.commit()
 
     return redirect("/admin_dashboard")
 
+
+@app.route("/course_detail/<int:course_id>")
+def course_detail(course_id):
+    # Fetch course details based on course_id from the database
+    course = Courses.query.get(course_id)
+
+    # Pass course details to the template
+    return render_template("course_detail.html", course=course)
 
 
 @app.route("/view_teacher/<int:teacher_id>")
@@ -209,14 +302,6 @@ def play_video_sample(teacher_id):
         return render_template("play_video_sample.html", videos=videos)
     else:
         return "No videos found for this teacher."
-
-
-
-
-
-
-
-
 
 
 if __name__=="__main__":

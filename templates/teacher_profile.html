@@ -39,7 +39,7 @@
 </head>
 
 <body class="g-sidenav-show bg-gray-100">
-<form action="{{url_for('maketeacher')}}"method="post"></form>
+<form action="{{url_for('teacher_profile')}}"method="post"></form>
   <aside class="sidenav navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-3 " id="sidenav-main">
     <div class="sidenav-header">
       <i class="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none" aria-hidden="true" id="iconSidenav"></i>
@@ -193,6 +193,11 @@
         <a class="btn btn-outline-white btn-lg mb-0 me-3" target="_blank" href="/maketeacher">MAKE TEACHER</a>
     </li>
 </ul>
+                    <ul class="navbar-nav justify-content-end">
+    <li class="nav-item d-flex align-items-center">
+        <a class="btn btn-outline-white btn-lg mb-0 me-3" target="_blank" href="/createcourse">Create Course</a>
+    </li>
+</ul>
 
         </div>
       </div>
@@ -241,7 +246,7 @@
                 <ul class="list-group">
     <li class="list-group-item border-0 ps-0 pt-0 text-sm"><strong class="text-dark">Full Name:</strong> {{ user_name }}</li>
     <li class="list-group-item border-0 ps-0 text-sm"><strong class="text-dark">Mobile:</strong> {{ user_phone }}</li>
-                  <li class="list-group-item border-0 ps-0 text-sm"><strong class="text-dark">type:</strong> USER</li>
+                  <li class="list-group-item border-0 ps-0 text-sm"><strong class="text-dark">Type:</strong> TEACHER</li>
     <!-- Add more user information as needed -->
 </ul>
 

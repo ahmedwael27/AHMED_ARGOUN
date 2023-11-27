@@ -26,38 +26,7 @@
 </head>
 
 <body>
-    <!-- Topbar Start -->
-    <div class="container-fluid bg-dark">
-        <div class="row py-2 px-lg-5">
-            <div class="col-lg-6 text-center text-lg-left mb-2 mb-lg-0">
-                <div class="d-inline-flex align-items-center text-white">
-                    <small><i class="fa fa-phone-alt mr-2"></i>+012 345 6789</small>
-                    <small class="px-3">|</small>
-                    <small><i class="fa fa-envelope mr-2"></i>info@example.com</small>
-                </div>
-            </div>
-            <div class="col-lg-6 text-center text-lg-right">
-                <div class="d-inline-flex align-items-center">
-                    <a class="text-white px-2" href="">
-                        <i class="fab fa-facebook-f"></i>
-                    </a>
-                    <a class="text-white px-2" href="">
-                        <i class="fab fa-twitter"></i>
-                    </a>
-                    <a class="text-white px-2" href="">
-                        <i class="fab fa-linkedin-in"></i>
-                    </a>
-                    <a class="text-white px-2" href="">
-                        <i class="fab fa-instagram"></i>
-                    </a>
-                    <a class="text-white pl-2" href="">
-                        <i class="fab fa-youtube"></i>
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
-    <!-- Topbar End -->
+
 
 
     <!-- Navbar Start -->
@@ -76,30 +45,37 @@
     <!-- Header Start -->
     <div class="jumbotron jumbotron-fluid page-header position-relative overlay-bottom" style="margin-bottom: 90px;">
         <div class="container text-center py-5">
-div>
 
-    <!-- Header End -->
-<!--{% for video in videos %}-->
-<!--    <h1>{{ video.title }}</h1>-->
-<!--    <p>{{ video.description }}</p>-->
-<!--    &lt;!&ndash; Display other video information as needed &ndash;&gt;-->
-<!--{% endfor %}-->
-    {{name}}
-    {{description}}
+
+
 
 
     <!-- Footer Start -->
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title style="color: blue;">{{ name }} - Video Detail</title>
+    <!-- Add your stylesheets and other meta tags here -->
+</head>
     <div class="container-fluid position-relative overlay-top bg-dark text-white-50 py-5" style="margin-top: 90px;">
-        <div class="container mt-5 pt-5">
-            <div class="row">
-            <h2 class="mb-3">Course Videos</h2>
-<div class="owl-carousel related-carousel position-relative" style="padding: 0 30px;">
-<h1>{{ video.title }}</h1>
-<p>{{ video.description }}</p>
-</div>
-            </div>
+       <div class="container mt-5">
+    <h1 class="display-4" style="color: white;">{{ name }} Video</h1>
+    <p>{{ description }}</p>
 
-        </div>
+    <div class="embed-responsive embed-responsive-16by9">
+        <!-- Use an iframe to embed the YouTube video -->
+        <iframe class="embed-responsive-item" width="560" height="315" src="https://www.youtube.com/embed/{{ video_file }}" frameborder="0" allowfullscreen></iframe>
+
+    </div>
+
+    <!-- Add more content or styling as needed -->
+
+</div>
+
+
+    <!-- Add more content or styling as needed -->
+
+</div>
     </div>
     <div class="container-fluid bg-dark text-white-50 border-top py-4" style="border-color: rgba(256, 256, 256, .1) !important;">
         <div class="container">

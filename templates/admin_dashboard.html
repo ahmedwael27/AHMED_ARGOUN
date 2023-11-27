@@ -99,21 +99,45 @@
 <!-- Admin Dashboard Section -->
 <section id="admin-dashboard" class="py-5">
     <div class="container">
-        <h2 class="text-center mb-4">Admin Dashboard</h2>
+        <h2 class="text-center mb-4">Teachers Requests</h2>
 
         <!-- Display Pending Teacher Requests -->
-        <ul>
-            {% for request in pending_requests %}
-                <li>
-                    <a href="{{ url_for('play_video_sample', teacher_id=request.id) }}">
-                        {{ request.name }} - {{ request.phone }}
-                    </a>
-                    <a href="{{ url_for('approve_teacher_request', request_id=request.id) }}">Approve</a>
-                </li>
-            {% endfor %}
-        </ul>
+        <div class="card">
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for request in pending_requests %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="{{ url_for('play_video_sample', teacher_id=request.id) }}">
+                                {{ request.name }} - {{ request.phone }}
+                            </a>
+                            <a href="{{ url_for('approve_teacher_request', request_id=request.id) }}" class="btn btn-success">Approve</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
     </div>
-</section>
+
+    <div class="container">
+        <h2 class="text-center mb-4">Courses Requests</h2>
+
+        <!-- Display Pending Teacher Requests -->
+                <div class="card">
+            <div class="card-body">
+                <ul class="list-group">
+                    {% for course in pending_courses %}
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <a href="{{ url_for('course_detail', course_id=course_request.id) }}">
+                                {{ course.course_name }} - {{ course.teacher_name }}
+                            </a>
+                            <a href="{{ url_for('approve_course_request', course_id=course_request.id) }}" class="btn btn-success">Approve</a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+
 
 
 
