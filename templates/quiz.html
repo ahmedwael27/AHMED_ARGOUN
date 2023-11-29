@@ -1,0 +1,22 @@
+<!-- quiz.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Quiz</title>
+</head>
+<body>
+
+
+   <form action="/quiz" method="POST">
+        {% for question in questions %}
+            <h3>{{ question.question_text }}</h3>
+            <p>Course: {{ question.course_name }}</p>
+            {% for answer in question.answers %}
+                <input type="checkbox" id="{{ answer.id }}" name="{{ answer.id }}">
+                <label for="{{ answer.id }}">{{ answer.answer_text }}</label>
+            {% endfor %}
+        {% endfor %}
+        <button type="submit">Submit Quiz</button>
+    </form>
+</body>
+</html>
