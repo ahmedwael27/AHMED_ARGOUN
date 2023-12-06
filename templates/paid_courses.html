@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="utf-8">
-    <title>Edukate - Online Education Website Template</title>
+    <title>Argon - Online Education Website Template</title>
     <meta content="width=device-width, initial-scale=1.0" name="viewport">
     <meta content="Free HTML Templates" name="keywords">
     <meta content="Free HTML Templates" name="description">
@@ -81,7 +81,7 @@
        <h3>All Courses</h3>
        <div class="courses-list">
            {% for course in paid_courses %}
-               <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="/detail/{{ course.id}}">
+               <a class="courses-list-item position-relative d-block overflow-hidden mb-2" href="/detail/{{ course.course_id}}">
                    <img class="img-fluid" src="../static/img/courses-1.jpg" alt="">
                    <div class="courses-text">
                        <h4 class="text-center text-white px-3">{{ course.course_name }}</h4>
