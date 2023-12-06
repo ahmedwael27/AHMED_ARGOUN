@@ -178,160 +178,7 @@ def feature():
 
 
 
-@app.route('/add_question', methods=['GET', 'POST'])
-def add_question():
-    # Check if the user has the role 'teacher'
-    if session.get('user_role') != 'teacher':
-        # Redirect to a different page or display an error message
-        return render_template('error.html', message='Access denied. You must be a teacher.')
 
-    if request.method == 'POST':
-        try:
-            # Extract data from the form
-            num_questions = int(request.form.get('num_questions'))
-
-            for i in range(1, num_questions + 1):
-                course_name = request.form.get(f'course_name_{i}')
-                question_text = request.form.get(f'question_{i}')
-                answer_texts = [request.form.get(f'answer_{i}_{j}') for j in range(1, 5)]
-                correct_answer_index_str = request.form.get(f'correct_answer_{i}')
-                correct_answer_index = int(correct_answer_index_str) if correct_answer_index_str.strip() else None
-
-                # Create a new question
-                # Create a new question
-                question = Question(course_name=course_name, question_text=question_text)
-                db.session.add(question)
-                db.session.commit()
-
-                # Create answers for the question
-                for j, answer_text in enumerate(answer_texts):
-                    is_correct = (j + 1 == correct_answer_index)  # Adjusted to 1-based index
-                    answer = Answer(answer_text=answer_text, is_correct=is_correct, question=question)
-                    db.session.add(answer)
-
-                    # Save the correct answer for the question
-                    if is_correct:
-                        question.correct_answer = answer
-
-                db.session.commit()
-
-            return redirect(url_for('add_question'))
-
-        except Exception as e:
-            # Handle exceptions (e.g., validation errors)
-            return render_template('error.html', message=str(e))
-
-    return render_template('add_question.html')
-
-
-@app.route('/submit_quiz', methods=['POST'])
-def submit_quiz():
-    # Redirect to the profile page or another page after submitting the entire quiz
-    return redirect(url_for('profile_page'))
-
-
-
-
-
-@app.route('/quiz/<course_name>', methods=['GET', 'POST'])
-def quiz(course_name):
-    if session.get('user_role') != 'student':
-        # Redirect to a different page or display an error message
-        return render_template('error.html', message='Access denied. You must be a student.')
-
-    user_id = session.get('user_id')
-    user_name = session.get('user_name')
-
-    # Check if the user has already taken the quiz for the specified course
-    existing_result = QuizResult.query.filter_by(course_name=course_name, user_id=user_id).first()
-    if existing_result:
-        # If the user has already taken the quiz, redirect or display a message
-        return render_template('error.html', message='You have already taken the quiz for this course.')
-
-    if request.method == 'GET':
-        # Retrieve questions for the specified course
-        questions = Question.query.filter_by(course_name=course_name).all()
-
-        return render_template('quiz.html', course_name=course_name, questions=questions)
-
-    elif request.method == 'POST':
-        # Retrieve the student record based on the user_name
-        student = Students.query.filter_by(name=user_name).first()
-
-        if student:
-            parent_name = student.parent_name
-
-            # Assuming the form is submitted with answer choices
-            student_answers = request.form.to_dict()
-
-            # Evaluate the student's answers
-            score = evaluate_quiz(course_name, student_answers)
-
-            # Save the quiz result to the database
-            mark = QuizResult(
-                course_name=course_name,
-                user_id=user_id,
-                name=user_name,
-                score=score,
-                parent_name=parent_name
-            )
-            db.session.add(mark)
-            db.session.commit()
-
-            return render_template('quiz_result.html', score=score)
-
-
-
-
-def evaluate_quiz(course_name, student_answers):
-    # Retrieve questions for the specified course
-    questions = Question.query.filter_by(course_name=course_name).all()
-
-    # Initialize the score
-    score = 0
-
-    for question in questions:
-        # Get the correct answer for the question
-        correct_answer = next((answer.answer_text for answer in question.answers if answer.is_correct), None)
-
-        # Check if the student's answer matches the correct answer
-        student_answer = student_answers.get(f'question_{question.id}')
-        if student_answer and student_answer == correct_answer:
-            score += 1
-
-    return score
-
-
-@app.route("/children_score", methods=["POST", "GET"])
-def children_score():
-    user_id = session.get('user_id')
-    user_name = session.get('user_name')
-
-    # Assuming Students model has a 'parent_name' property
-    student = Students.query.filter_by(parent_name=user_name).first()
-    parent_name=user_name
-
-    children_score = []
-
-    if parent_name:
-        # Assuming QuizResult model has a 'parent_name' property
-        quiz_scores = QuizResult.query.filter_by(parent_name=parent_name).all()
-        children_score.extend(quiz_scores)
-
-    return render_template("children_result.html", children_score=children_score)
-
-
-@app.route("/result", methods=["POST", "GET"])
-def result():
-    user_id = session.get('user_id')
-    user_name = session.get('user_name')
-    result = QuizResult.query.all()
-    children_score = []
-    for mark in result:
-        if mark.name==user_name:
-            children_score.append(mark)
-
-    return render_template("result.html", children_score=children_score)
 
 @app.route("/register", methods=["POST","GET"])
 def register():
@@ -782,6 +629,161 @@ def admin_dashboard():
         return ("Method not allowed")
 
     return render_template("admin_dashboard.html", pending_requests=pending_requests, pending_courses=pending_courses)
+
+@app.route('/add_question', methods=['GET', 'POST'])
+def add_question():
+    # Check if the user has the role 'teacher'
+    if session.get('user_role') != 'teacher':
+        # Redirect to a different page or display an error message
+        return render_template('error.html', message='Access denied. You must be a teacher.')
+
+    if request.method == 'POST':
+        try:
+            # Extract data from the form
+            num_questions = int(request.form.get('num_questions'))
+
+            for i in range(1, num_questions + 1):
+                course_name = request.form.get(f'course_name_{i}')
+                question_text = request.form.get(f'question_{i}')
+                answer_texts = [request.form.get(f'answer_{i}_{j}') for j in range(1, 5)]
+                correct_answer_index_str = request.form.get(f'correct_answer_{i}')
+                correct_answer_index = int(correct_answer_index_str) if correct_answer_index_str.strip() else None
+
+                # Create a new question
+                # Create a new question
+                question = Question(course_name=course_name, question_text=question_text)
+                db.session.add(question)
+                db.session.commit()
+
+                # Create answers for the question
+                for j, answer_text in enumerate(answer_texts):
+                    is_correct = (j + 1 == correct_answer_index)  # Adjusted to 1-based index
+                    answer = Answer(answer_text=answer_text, is_correct=is_correct, question=question)
+                    db.session.add(answer)
+
+                    # Save the correct answer for the question
+                    if is_correct:
+                        question.correct_answer = answer
+
+                db.session.commit()
+
+            return redirect(url_for('add_question'))
+
+        except Exception as e:
+            # Handle exceptions (e.g., validation errors)
+            return render_template('error.html', message=str(e))
+
+    return render_template('add_question.html')
+
+
+@app.route('/submit_quiz', methods=['POST'])
+def submit_quiz():
+    # Redirect to the profile page or another page after submitting the entire quiz
+    return redirect(url_for('profile_page'))
+
+
+
+
+
+@app.route('/quiz/<course_name>', methods=['GET', 'POST'])
+def quiz(course_name):
+    if session.get('user_role') != 'student':
+        # Redirect to a different page or display an error message
+        return render_template('error.html', message='Access denied. You must be a student.')
+
+    user_id = session.get('user_id')
+    user_name = session.get('user_name')
+
+    # Check if the user has already taken the quiz for the specified course
+    existing_result = QuizResult.query.filter_by(course_name=course_name, user_id=user_id).first()
+    if existing_result:
+        # If the user has already taken the quiz, redirect or display a message
+        return render_template('error.html', message='You have already taken the quiz for this course.')
+
+    if request.method == 'GET':
+        # Retrieve questions for the specified course
+        questions = Question.query.filter_by(course_name=course_name).all()
+
+        return render_template('quiz.html', course_name=course_name, questions=questions)
+
+    elif request.method == 'POST':
+        # Retrieve the student record based on the user_name
+        student = Students.query.filter_by(name=user_name).first()
+
+        if student:
+            parent_name = student.parent_name
+
+            # Assuming the form is submitted with answer choices
+            student_answers = request.form.to_dict()
+
+            # Evaluate the student's answers
+            score = evaluate_quiz(course_name, student_answers)
+
+            # Save the quiz result to the database
+            mark = QuizResult(
+                course_name=course_name,
+                user_id=user_id,
+                name=user_name,
+                score=score,
+                parent_name=parent_name
+            )
+            db.session.add(mark)
+            db.session.commit()
+
+            return render_template('quiz_result.html', score=score)
+
+
+
+
+def evaluate_quiz(course_name, student_answers):
+    # Retrieve questions for the specified course
+    questions = Question.query.filter_by(course_name=course_name).all()
+
+    # Initialize the score
+    score = 0
+
+    for question in questions:
+        # Get the correct answer for the question
+        correct_answer = next((answer.answer_text for answer in question.answers if answer.is_correct), None)
+
+        # Check if the student's answer matches the correct answer
+        student_answer = student_answers.get(f'question_{question.id}')
+        if student_answer and student_answer == correct_answer:
+            score += 1
+
+    return score
+
+
+@app.route("/children_score", methods=["POST", "GET"])
+def children_score():
+    user_id = session.get('user_id')
+    user_name = session.get('user_name')
+
+    # Assuming Students model has a 'parent_name' property
+    student = Students.query.filter_by(parent_name=user_name).first()
+    parent_name=user_name
+
+    children_score = []
+
+    if parent_name:
+        # Assuming QuizResult model has a 'parent_name' property
+        quiz_scores = QuizResult.query.filter_by(parent_name=parent_name).all()
+        children_score.extend(quiz_scores)
+
+    return render_template("children_result.html", children_score=children_score)
+
+
+@app.route("/result", methods=["POST", "GET"])
+def result():
+    user_id = session.get('user_id')
+    user_name = session.get('user_name')
+    result = QuizResult.query.all()
+    children_score = []
+    for mark in result:
+        if mark.name==user_name:
+            children_score.append(mark)
+
+    return render_template("result.html", children_score=children_score)
 
 @app.route("/my_courses")
 def my_courses():
