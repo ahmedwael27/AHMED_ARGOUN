@@ -54,27 +54,67 @@
 <!-- Admin Dashboard Section -->
 <!-- Admin Dashboard Section -->
 <section id="admin-dashboard" class="py-5">
-    <div class="container">
-    <h2 class="text-center mb-4">children score </h2>
+<div class="container">
+    <h2 class="text-center mb-4">Children Score</h2>
 
     <!-- Display Pending Teacher Requests -->
     <div class="card">
         <div class="card-body">
             <ul class="list-group">
                 {% for score in children_score %}
-                 <li class="list-group-item d-flex justify-content-between align-items-center">
-                     <h1>{{score.name}}</h1>
-                     <p1>{{score.course_name}}</p1>
-                     <h2>{{score.score}}</h2>
-
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <h1>{{ score.child_name }}</h1>
+                        <p1>{{ score.course_name }}</p1>
+                        <h2>{{ score.score }}</h2>
                     </li>
-
-
                 {% endfor %}
             </ul>
         </div>
     </div>
+
+    <!-- Add a canvas element for the chart -->
+    <div class="card mt-4">
+        <div class="card-body">
+            <canvas id="quizChart" width="400" height="200"></canvas>
+        </div>
+    </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Add this script to create the chart
+    document.addEventListener('DOMContentLoaded', function () {
+        var ctx = document.getElementById('quizChart').getContext('2d');
+
+        var data = {
+            labels: [
+                {% for score in children_score %}"{{ score.name }}",{% endfor %}
+            ],
+            datasets: [{
+                label: 'Quiz Scores',
+                backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                borderColor: 'rgba(75, 192, 192, 1)',
+                borderWidth: 1,
+                data: [
+                    {% for score in children_score %}{{ score.score }},{% endfor %}
+                ]
+            }]
+        };
+
+        var myChart = new Chart(ctx, {
+            type: 'bar',
+            data: data,
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    });
+</script>
+
 
 
 

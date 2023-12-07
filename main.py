@@ -81,7 +81,7 @@ with app.app_context():
         teacher_phone = db.Column(db.String(100))
         course_name = db.Column(db.String(100))
         video_url = db.Column(db.String(200))  # New column for video URL
-        is_checked = db.Column(db.Boolean, default=False)
+        video_status = db.Column(db.String(100))
         teacher_id = db.Column(db.Integer, db.ForeignKey('teacher.id'))
         teacher = db.relationship('Teacher', back_populates='videos')
 
@@ -129,7 +129,10 @@ with app.app_context():
 
 class MyModelView(ModelView):
     def is_accessible(self):
-        return True
+        # Check if the user is logged in and has the 'admin' role
+        if 'user_role' in session and session['user_role'] == 'admin':
+            return True
+        return False
 
 
 
@@ -369,9 +372,6 @@ def video_detail(id):
 
     return render_template("video_detail.html", videos=video, name=name,description=description,video_file=video_file)
 
-class PurchaseForm(FlaskForm):
-    user_name = StringField('Your Name', validators=[DataRequired()])
-    submit = SubmitField('Purchase')
 
 class PurchaseForm(FlaskForm):
     user_name = StringField('Your Name', validators=[DataRequired()])
@@ -429,7 +429,7 @@ def buy_course(id):
 @app.route("/maketeacher", methods=["GET", "POST"])
 def maketeacher():
     if request.method == "POST":
-        phone = request.form.get("phone")
+        phone = session.get('user_phone')
         all_users = User.query.filter_by(phone=phone).all()
         teacher_sample= request.form.get("teacher_sample")
         for user in all_users:
@@ -484,26 +484,35 @@ def view_teacher_sample(request_id):
         return "No teacher found with this ID."
 
 
-@app.route("/createcourse", methods=["GET","POST"])
+@app.route("/createcourse", methods=["GET", "POST"])
 def createcourse():
-    if request.method == "POST":
-        course_name = request.form.get("course_name")
-        teacher_name = request.form.get("teacher_name")
-        teacher_phone = request.form.get("teacher_phone")
-        course_price = request.form.get("course_price")
-        course_sample = request.form.get("course_sample")
-        new_course = Courses(
-            course_name=course_name,
-            teacher_name=teacher_name,
-            teacher_phone=teacher_phone,
-            course_price=course_price,
-            course_sample=course_sample,
-            status='pending'
-        )
-        db.session.add(new_course)
-        db.session.commit()
-        return redirect("teacher_profile")
-    return render_template("create_course.html")
+    # Check if the user is logged in and has the role 'teacher'
+    user_id = session.get('user_id')
+    user_role = session.get('user_role')
+
+    # Assuming 'teacher' is the role for teachers
+    if user_id and user_role == 'teacher':
+        if request.method == "POST":
+            teacher_name = session.get('user_name')
+            teacher_phone = session.get('user_phone')
+            course_name = request.form.get("course_name")
+            course_price = request.form.get("course_price")
+            course_sample = request.form.get("course_sample")
+            new_course = Courses(
+                course_name=course_name,
+                teacher_name=teacher_name,
+                teacher_phone=teacher_phone,
+                course_price=course_price,
+                course_sample=course_sample,
+                status='pending'
+            )
+            db.session.add(new_course)
+            db.session.commit()
+            return redirect("teacher_profile")
+        return render_template("create_course.html")
+
+    # If the user is not a teacher, you may want to redirect them or show an error
+    return "Unauthorized access"
 
 
 @app.route("/approve_course_request/<int:course_id>")
@@ -534,32 +543,38 @@ def course_detail(course_id):
         # Handle the case where the course with the given ID is not found
         return render_template("course_not_found.html")
 
-@app.route("/create_video", methods=["GET", "POST"])
-def create_video():
+@app.route("/create_video/<int:course_id>", methods=["GET", "POST"])
+def create_video(course_id):
     if request.method == "POST":
-        name = request.form.get("name")
-        description = request.form.get("description")
-        teacher_name = request.form.get("teacher_name")
-        teacher_phone = request.form.get("teacher_phone")
-        course_name = request.form.get("course_name")
-        video_url = request.form.get("video_url")
-        is_checked = request.form.get("is_checked") == "on"  # Convert checkbox value to boolean
+        course = Courses.query.get(course_id)
+        if course:
+            course_name = course.course_name
+            teacher_name = session.get('user_name')
+            teacher_phone = session.get('user_phone')
+            name = request.form.get("name")
+            description = request.form.get("description")
+            video_url = request.form.get("video_url")
+            subscription_type = request.form.get("subscription_type")
 
-        new_video = Videos(
-            name=name,
-            description=description,
-            teacher_name=teacher_name,
-            teacher_phone=teacher_phone,
-            course_name=course_name,
-            video_url=video_url,
-            is_checked=is_checked,  # Add the checkbox value to the new video
-        )
+            new_video = Videos(
+                name=name,
+                description=description,
+                teacher_name=teacher_name,
+                teacher_phone=teacher_phone,
+                course_name=course_name,
+                video_url=video_url,
+                video_status=subscription_type
+            )
 
-        db.session.add(new_video)
-        db.session.commit()
-        return redirect("teacher_profile")
+            db.session.add(new_video)
+            db.session.commit()
+            return redirect("/teacher_profile")
+        else:
+            return 'no'
 
     return render_template("create_video.html")
+
+
 
 @app.route("/contact")
 def contact():
@@ -573,33 +588,40 @@ def logout():
 
 @app.route("/add", methods=["GET","POST"])
 def add():
-    print("Route accessed!")
-    if request.method == "POST":
-        child_name = request.form.get("child_name")
-        parent_phone = request.form.get("parent_phone")
-        phone = request.form.get("phone")
-        password = request.form.get("password")
-        parent = User.query.filter_by(phone=parent_phone).first()
-        parent_name = parent.name
+    user_id = session.get('user_id')
+    user_role = session.get('user_role')
 
-        new_student = Students(
-            parent_name=parent_name,
-            parent_phone=parent_phone,
-            name=child_name
-        )
+    # Assuming 'teacher' is the role for teachers
+    if user_id and user_role == 'user':
 
-        db.session.add(new_student)
+        if request.method == "POST":
+            parent_phone = session.get('user_phone')
+            child_name = request.form.get("child_name")
+            phone = request.form.get("phone")
+            password = request.form.get("password")
+            parent = User.query.filter_by(phone=parent_phone).first()
+            parent_name = parent.name
 
-        new_user = User(
-            name=child_name,
-            phone=phone,
-            password=password,
-            role='student'
-        )
-        db.session.add(new_user)
-        db.session.commit()
-        return redirect("/login")
-    return render_template("add_child.html")
+            new_student = Students(
+                parent_name=parent_name,
+                parent_phone=parent_phone,
+                name=child_name
+            )
+
+            db.session.add(new_student)
+
+            new_user = User(
+                name=child_name,
+                phone=phone,
+                password=password,
+                role='student'
+            )
+            db.session.add(new_user)
+            db.session.commit()
+            return redirect("/login")
+        return render_template("add_child.html")
+    # If the user is not a teacher, you may want to redirect them or show an error
+    return "Only parent can add children"
 
 
 
@@ -761,14 +783,20 @@ def children_score():
 
     # Assuming Students model has a 'parent_name' property
     student = Students.query.filter_by(parent_name=user_name).first()
-    parent_name=user_name
+    parent_name = user_name
 
     children_score = []
 
     if parent_name:
-        # Assuming QuizResult model has a 'parent_name' property
-        quiz_scores = QuizResult.query.filter_by(parent_name=parent_name).all()
-        children_score.extend(quiz_scores)
+        # Assuming QuizResult model has 'parent_name', 'child_name', and 'score' properties
+        quiz_results = QuizResult.query.filter_by(parent_name=parent_name).all()
+
+        for result in quiz_results:
+            children_score.append({
+                'child_name': result.name,
+                'course_name':result.course_name,
+                'score': result.score
+            })
 
     return render_template("children_result.html", children_score=children_score)
 
@@ -777,36 +805,61 @@ def children_score():
 def result():
     user_id = session.get('user_id')
     user_name = session.get('user_name')
-    result = QuizResult.query.all()
-    children_score = []
-    for mark in result:
-        if mark.name==user_name:
-            children_score.append(mark)
-
-    return render_template("result.html", children_score=children_score)
-
+    user_role = session.get('user_role')
+    if user_id and user_role == 'student':
+        result = QuizResult.query.all()
+        children_score = []
+        for mark in result:
+            if mark.name==user_name:
+                children_score.append(mark)
+        return render_template("result.html", children_score=children_score)
+    return "Only for children"
 @app.route("/my_courses")
 def my_courses():
     user_name = session.get('user_name')
-    user = User.query.filter_by(name=user_name).first()
-    teachers = Teacher.query.all()
+    user_phone = session.get('user_phone')
+    user_id = session.get('user_id')
+    user_role = session.get('user_role')
     courses = Courses.query.all()
     my_courses = []
-    for teacher in range(len(teachers)):
-        if teachers[teacher].name == user_name:
-           my_courses.append( courses[teacher])
-    return render_template("my_courses.html", my_courses=my_courses)
+    for course in courses:
+        if course.teacher_name == user_name and course.teacher_phone == user_phone:
+            my_courses.append(course)
+    return render_template("my_courses.html", user_id=user_id, user_name=user_name, user_phone=user_phone, my_courses=my_courses)
+
+@app.route('/my_course_detail/<int:id>')
+def my_course_detail(id):
+    course = Courses.query.filter_by(id=id).first()
+    course_id = course.id
+    course_name = course.course_name
+
+    user_id = session.get('user_id')
+    user_name = session.get('user_name')
+    user_phone = session.get('user_phone')
+    all_videos = Videos.query.all()
+    videos = []
+
+    if course:
+        course_name = course.course_name
+        teacher_name = course.teacher_name
+        teacher_phone = course.teacher_phone
+        price = course.course_price
+        for video in all_videos:
+            if video.course_name == course_name and video.teacher_name == teacher_name:
+                videos.append(video)
+
+    return render_template("my_course_detail.html", videos=videos, current_name=course.course_name, user_id=user_id, user_name=user_name, user_phone=user_phone, course=course)
 
 @app.route("/my_students")
 def my_students():
     user_name = session.get('user_name')
-    courses = Paid_courses.query.filter_by(teacher_name=user_name).first()
-    teachers = Teacher.query.all()
-    courses = Courses.query.all()
+    user_phone = session.get('user_phone')
+    courses = Paid_courses.query.all()
     my_students = []
-    for course in courses:
-        my_students.append(course)
-        return render_template("my_students.html", my_courses=my_courses)
+    for student in courses:
+        if student.teacher_name==user_name and student.teacher_phone==user_phone:
+            my_students.append(student)
+    return render_template("my_students.html", my_students=my_students)
 
 if __name__ == "__main__":
     app.run(debug=True)
